@@ -22,7 +22,7 @@ model Organization {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  users     User[]
+  users     UserOrganization[]
   sectors   Sector[]
   beds      Bed[]
   patients  Patient[]
@@ -32,22 +32,48 @@ model Organization {
 }
 
 model User {
-  id             Int      @id @default(autoincrement())
-  organizationId Int
-  name           String
-  email          String   @unique
-  login          String   @unique
-  password       String
-  jobTitle       String
-  role           String   @default("routine") // administrator, coordinator, routine, oncall
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  login     String   @unique
+  password  String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizations UserOrganization[]
 
-  @@index([organizationId])
   @@map("users")
+}
+
+model UserOrganization {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  organizationId Int
+  role           String
+  jobTitle       String?
+  isActive       Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sectors      UserOrganizationSector[]
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@map("user_organizations")
+}
+
+model UserOrganizationSector {
+  userOrganizationId Int
+  sectorId           Int
+
+  userOrganization UserOrganization @relation(fields: [userOrganizationId], references: [id], onDelete: Cascade)
+  sector           Sector           @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+
+  @@id([userOrganizationId, sectorId])
+  @@map("user_organization_sectors")
 }
 
 model Sector {
@@ -60,6 +86,7 @@ model Sector {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   beds         Bed[]
+  userOrganizations UserOrganizationSector[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
@@ -71,7 +98,7 @@ model Bed {
   organizationId Int
   sectorId       Int?
   code           String
-  sector         String   @default("CTI 1")
+  sectorName     String   @default("CTI 1") @map("sector")
   occupied       Boolean  @default(false)
   status         String   @default("Vago") // Vago, Estavel, Atencao, Alta prevista
   isActive       Boolean  @default(true)
@@ -80,7 +107,7 @@ model Bed {
   updatedAt      DateTime @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  sectorRef    Sector?      @relation(fields: [sectorId], references: [id], onDelete: SetNull)
+  sector       Sector?      @relation(fields: [sectorId], references: [id], onDelete: SetNull)
   patient      Patient?     @relation(fields: [patientId], references: [id], onDelete: SetNull)
 
   @@unique([organizationId, code])

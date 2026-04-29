@@ -68,6 +68,39 @@
   font-weight: 700;
 }
 
+.sectorAccess {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.sectorAccess legend {
+  padding: 0 0.35rem;
+  color: var(--text-soft);
+  font-weight: 800;
+}
+
+.sectorGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.sectorOption {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.sectorOption span {
+  overflow-wrap: anywhere;
+}
+
 .formActions,
 .cardActions {
   display: flex;
@@ -178,5 +211,9 @@
   .cardActions {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .sectorGrid {
+    grid-template-columns: 1fr;
   }
 }

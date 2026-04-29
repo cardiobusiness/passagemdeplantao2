@@ -10,10 +10,24 @@ async function main() {
     where: { login: "admin" },
     data: {
       password,
-      role: "administrator",
       isActive: true,
     },
   });
+
+  const admin = await prisma.user.findUnique({
+    where: { login: "admin" },
+    include: { organizations: true }
+  });
+
+  if (admin) {
+    await prisma.userOrganization.updateMany({
+      where: { userId: admin.id },
+      data: {
+        role: "administrator",
+        isActive: true
+      }
+    });
+  }
 
   console.log("Senha do admin atualizada com sucesso.");
 }

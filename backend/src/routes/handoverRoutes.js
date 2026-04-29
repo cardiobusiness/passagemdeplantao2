@@ -8,7 +8,7 @@ router.use(requireAuth);
 
 router.get("/", async (req, res) => {
   try {
-    return res.json(await getHandovers(req.user.organizationId));
+    return res.json(await getHandovers(req.user.organizationId, req.user.sectorIds));
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -16,7 +16,7 @@ router.get("/", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   const id = Number(req.params.id);
-  const handover = await getHandoverById(id, req.user.organizationId);
+  const handover = await getHandoverById(id, req.user.organizationId, req.user.sectorIds);
 
   if (!handover) {
     return res.status(404).json({ message: "Passagem de plantão não encontrada." });
@@ -33,7 +33,7 @@ router.post("/", requireOrganizationWriteAccess, async (req, res) => {
   }
 
   try {
-    const handover = await createHandover(req.user.organizationId, professionalId, bedIds);
+    const handover = await createHandover(req.user.organizationId, req.user.sectorIds, professionalId, bedIds);
     return res.status(201).json(handover);
   } catch (error) {
     return res.status(500).json({ message: error.message });

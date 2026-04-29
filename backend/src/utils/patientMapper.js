@@ -316,7 +316,7 @@ export function mapBedRecord(bed) {
     organizationId: bed.organizationId,
     sectorId: bed.sectorId ?? null,
     code: bed.code,
-    sector: bed.sectorRef?.name ?? bed.sector,
+    sector: bed.sector?.name ?? bed.sectorName,
     occupied: bed.occupied,
     status: bed.status,
     isActive: bed.isActive,

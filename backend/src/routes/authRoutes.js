@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/authMiddleware.js";
-import { authenticateUser, listActiveProfessionals, logoutUser } from "../services/userService.js";
+import { authenticateUser, listActiveProfessionals, logoutUser, selectOrganization } from "../services/userService.js";
 
 const router = Router();
 
@@ -14,6 +14,21 @@ router.post("/login", async (req, res) => {
 
   try {
     const result = await authenticateUser(authIdentifier, password);
+    return res.json(result);
+  } catch (error) {
+    return res.status(error.statusCode ?? 401).json({ message: error.message });
+  }
+});
+
+router.post("/select-organization", async (req, res) => {
+  const { temporaryToken, organizationId } = req.body;
+
+  if (!temporaryToken || !organizationId) {
+    return res.status(400).json({ message: "Token temporario e organizacao sao obrigatorios." });
+  }
+
+  try {
+    const result = await selectOrganization(temporaryToken, organizationId);
     return res.json(result);
   } catch (error) {
     return res.status(error.statusCode ?? 401).json({ message: error.message });

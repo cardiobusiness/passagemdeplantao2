@@ -8,7 +8,7 @@ router.use(requireAuth);
 
 router.get("/monthly", async (req, res) => {
   try {
-    const dashboard = await getMonthlyDashboard(req.user.organizationId);
+    const dashboard = await getMonthlyDashboard(req.user.organizationId, req.user.sectorIds);
     return res.json(dashboard);
   } catch (error) {
     return res.status(500).json({

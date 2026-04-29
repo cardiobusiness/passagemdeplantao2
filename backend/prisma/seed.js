@@ -31,26 +31,49 @@ async function ensureDefaultOrganization() {
   });
 }
 
-async function upsertUser(organizationId, user) {
-  return prisma.user.upsert({
+async function upsertUser(user) {
+  const existingUser = await prisma.user.upsert({
     where: { login: user.login },
     update: {
-      organizationId,
       name: user.name,
       email: user.email,
       password: createPasswordHash(user.password),
-      jobTitle: user.jobTitle,
-      role: user.role,
       isActive: true
     },
     create: {
-      organizationId,
       name: user.name,
       email: user.email,
       login: user.login,
       password: createPasswordHash(user.password),
-      jobTitle: user.jobTitle,
-      role: user.role,
+      isActive: true
+    }
+  });
+
+  return {
+    ...existingUser,
+    seedRole: user.role,
+    seedJobTitle: user.jobTitle
+  };
+}
+
+async function upsertUserOrganization(organizationId, user) {
+  return prisma.userOrganization.upsert({
+    where: {
+      userId_organizationId: {
+        userId: user.id,
+        organizationId
+      }
+    },
+    update: {
+      role: user.seedRole,
+      jobTitle: user.seedJobTitle,
+      isActive: true
+    },
+    create: {
+      userId: user.id,
+      organizationId,
+      role: user.seedRole,
+      jobTitle: user.seedJobTitle,
       isActive: true
     }
   });
@@ -59,8 +82,8 @@ async function upsertUser(organizationId, user) {
 async function main() {
   const organization = await ensureDefaultOrganization();
 
-  await Promise.all([
-    upsertUser(organization.id, {
+  const users = await Promise.all([
+    upsertUser({
       name: "Administrador",
       email: "admin@cti.com",
       login: "admin",
@@ -68,7 +91,7 @@ async function main() {
       jobTitle: "Administrador",
       role: "administrator"
     }),
-    upsertUser(organization.id, {
+    upsertUser({
       name: "Coordenador",
       email: "coordenador@cti.com",
       login: "coordenador",
@@ -76,7 +99,7 @@ async function main() {
       jobTitle: "Coordenador",
       role: "coordinator"
     }),
-    upsertUser(organization.id, {
+    upsertUser({
       name: "Rotina",
       email: "rotina@cti.com",
       login: "rotina",
@@ -84,7 +107,7 @@ async function main() {
       jobTitle: "Fisioterapeuta",
       role: "routine"
     }),
-    upsertUser(organization.id, {
+    upsertUser({
       name: "Plantonista",
       email: "plantonista@cti.com",
       login: "plantonista",
@@ -111,6 +134,16 @@ async function main() {
     }
   });
 
+  const memberships = await Promise.all(users.map((user) => upsertUserOrganization(organization.id, user)));
+
+  await prisma.userOrganizationSector.createMany({
+    data: memberships.map((membership) => ({
+      userOrganizationId: membership.id,
+      sectorId: defaultSector.id
+    })),
+    skipDuplicates: true
+  });
+
   for (let i = 101; i <= 140; i += 1) {
     const code = `L${i}`;
     await prisma.bed.upsert({
@@ -122,14 +155,14 @@ async function main() {
       },
       update: {
         sectorId: defaultSector.id,
-        sector: defaultSector.name,
+        sectorName: defaultSector.name,
         isActive: true
       },
       create: {
         organizationId: organization.id,
         sectorId: defaultSector.id,
         code,
-        sector: defaultSector.name,
+        sectorName: defaultSector.name,
         occupied: false,
         status: "Vago"
       }

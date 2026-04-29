@@ -18,7 +18,7 @@ router.use(requireAuth);
 
 router.get("/", async (req, res) => {
   try {
-    const patients = await getPatients(req.user.organizationId);
+    const patients = await getPatients(req.user.organizationId, req.user.sectorIds);
     res.json(patients);
   } catch (error) {
     res.status(500).json({
@@ -30,7 +30,7 @@ router.get("/", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   try {
-    const patient = await getPatientById(req.params.id, req.user.organizationId);
+    const patient = await getPatientById(req.params.id, req.user.organizationId, req.user.sectorIds);
     return res.json(patient);
   } catch (error) {
     const statusCode = error.statusCode || 400;
@@ -40,7 +40,7 @@ router.get("/:id", async (req, res) => {
 
 router.post("/", requireOrganizationWriteAccess, async (req, res) => {
   try {
-    const patient = await createPatient(req.body, req.user.organizationId);
+    const patient = await createPatient(req.body, req.user.organizationId, req.user.sectorIds);
     return res.status(201).json(patient);
   } catch (error) {
     return res.status(400).json({ message: error.message });
@@ -49,7 +49,7 @@ router.post("/", requireOrganizationWriteAccess, async (req, res) => {
 
 router.get("/:id/labs", async (req, res) => {
   try {
-    const labs = await getPatientLabs(req.params.id, req.user.organizationId);
+    const labs = await getPatientLabs(req.params.id, req.user.organizationId, req.user.sectorIds);
     return res.json(labs);
   } catch (error) {
     const statusCode = error.statusCode || 400;
@@ -59,7 +59,7 @@ router.get("/:id/labs", async (req, res) => {
 
 router.post("/:id/labs", requireOrganizationWriteAccess, async (req, res) => {
   try {
-    const lab = await createPatientLab(req.params.id, req.body, req.user.organizationId);
+    const lab = await createPatientLab(req.params.id, req.body, req.user.organizationId, req.user.sectorIds);
     return res.status(201).json(lab);
   } catch (error) {
     const statusCode = error.statusCode || 400;
@@ -69,7 +69,7 @@ router.post("/:id/labs", requireOrganizationWriteAccess, async (req, res) => {
 
 router.put("/:id/labs/:labId", requireOrganizationWriteAccess, async (req, res) => {
   try {
-    const lab = await updatePatientLab(req.params.id, req.params.labId, req.body, req.user.organizationId);
+    const lab = await updatePatientLab(req.params.id, req.params.labId, req.body, req.user.organizationId, req.user.sectorIds);
     return res.json(lab);
   } catch (error) {
     const statusCode = error.statusCode || 400;
@@ -79,7 +79,7 @@ router.put("/:id/labs/:labId", requireOrganizationWriteAccess, async (req, res) 
 
 router.delete("/:id/labs/:labId", requireOrganizationWriteAccess, async (req, res) => {
   try {
-    const lab = await deletePatientLab(req.params.id, req.params.labId, req.user.organizationId);
+    const lab = await deletePatientLab(req.params.id, req.params.labId, req.user.organizationId, req.user.sectorIds);
     return res.json(lab);
   } catch (error) {
     const statusCode = error.statusCode || 400;
@@ -90,7 +90,7 @@ router.delete("/:id/labs/:labId", requireOrganizationWriteAccess, async (req, re
 router.post("/:id/discharge", requireOrganizationWriteAccess, async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await dischargePatient(id, req.body, req.user.organizationId);
+    const result = await dischargePatient(id, req.body, req.user.organizationId, req.user.sectorIds);
     return res.json(result);
   } catch (error) {
     return res.status(400).json({ message: error.message });
@@ -99,7 +99,7 @@ router.post("/:id/discharge", requireOrganizationWriteAccess, async (req, res) =
 
 router.patch("/:id/clinical-data", requireOrganizationWriteAccess, async (req, res) => {
   try {
-    const result = await updatePatientClinicalData(req.params.id, req.body, req.user.organizationId);
+    const result = await updatePatientClinicalData(req.params.id, req.body, req.user.organizationId, req.user.sectorIds);
     return res.json(result);
   } catch (error) {
     const statusCode = error.statusCode || 400;

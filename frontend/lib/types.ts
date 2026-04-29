@@ -1,5 +1,7 @@
 export type User = {
   id: number;
+  userId?: number;
+  userOrganizationId?: number;
   organizationId: number;
   name: string;
   email: string;
@@ -7,6 +9,8 @@ export type User = {
   jobTitle: string;
   role: string;
   isActive: boolean;
+  sectorIds: number[];
+  sectors: UserSectorAccess[];
   organization: Organization | null;
 };
 
@@ -25,11 +29,33 @@ export type Organization = {
   isAllowed: boolean;
 };
 
-export type LoginResponse = {
+export type OrganizationSelectionOption = {
+  id: number;
+  name: string;
+  role: string;
+  jobTitle: string;
+  status: string;
+  plan: string;
+  trialEndsAt: string;
+  trialDaysRemaining?: number;
+};
+
+export type AuthenticatedLoginResponse = {
   token: string;
   user: User;
   organization: Organization | null;
+  role: string;
+  sectors: UserSectorAccess[];
 };
+
+export type OrganizationSelectionResponse = {
+  requiresOrganizationSelection: true;
+  temporaryToken: string;
+  user: Pick<User, "id" | "name" | "email" | "login" | "isActive">;
+  organizations: OrganizationSelectionOption[];
+};
+
+export type LoginResponse = AuthenticatedLoginResponse | OrganizationSelectionResponse;
 
 export type PatientLab = {
   id: number;
@@ -278,6 +304,11 @@ export type Sector = {
   updatedAt: string;
 };
 
+export type UserSectorAccess = {
+  id: number;
+  name: string;
+};
+
 export type UpdateOrganizationPayload = {
   name: string;
   document?: string | null;
@@ -332,6 +363,7 @@ export type UserFormPayload = {
   jobTitle: string;
   role: string;
   isActive: boolean;
+  sectorIds: number[];
 };
 
 export type UpdateUserPayload = Omit<UserFormPayload, "password">;

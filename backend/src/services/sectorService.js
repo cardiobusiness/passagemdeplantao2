@@ -149,7 +149,7 @@ export async function updateSector(sectorId, payload, organizationId) {
           organizationId,
           sectorId: numericSectorId
         },
-        data: { sector: data.name }
+        data: { sectorName: data.name }
       });
     }
 

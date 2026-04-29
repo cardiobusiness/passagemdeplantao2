@@ -1,3 +1,38 @@
+.groups {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.group {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.groupHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.55rem;
+}
+
+.groupHeader h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.groupHeader span {
+  color: var(--text-soft);
+  font-weight: 800;
+}
+
+.empty {
+  margin: 0;
+  color: var(--text-soft);
+  font-weight: 700;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));

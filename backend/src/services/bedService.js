@@ -1,15 +1,20 @@
 import { prisma } from "../middleware/prismaMiddleware.js";
 import { mapBedRecord } from "../utils/patientMapper.js";
+import { activeBedWhere } from "./sectorAccessService.js";
 
-function getPatientInclude(organizationId) {
+function activeOrganizationBedWhere(organizationId) {
+  return {
+    organizationId,
+    occupied: true,
+    isActive: true,
+    OR: [{ sectorId: null }, { sector: { isActive: true } }]
+  };
+}
+
+function getPatientInclude(organizationId, sectorIds = null) {
   return {
     beds: {
-      where: {
-        organizationId,
-        occupied: true,
-        isActive: true,
-        OR: [{ sectorId: null }, { sectorRef: { isActive: true } }]
-      },
+      where: sectorIds ? { ...activeBedWhere(organizationId, sectorIds), occupied: true } : activeOrganizationBedWhere(organizationId),
       take: 1,
       orderBy: { id: "asc" }
     },
@@ -21,11 +26,11 @@ function getPatientInclude(organizationId) {
   };
 }
 
-function getBedInclude(organizationId) {
+function getBedInclude(organizationId, sectorIds = null) {
   return {
-    sectorRef: true,
+    sector: true,
     patient: {
-      include: getPatientInclude(organizationId)
+      include: getPatientInclude(organizationId, sectorIds)
     }
   };
 }
@@ -67,15 +72,11 @@ async function getSectorForBed(sectorId, organizationId) {
   return sector;
 }
 
-export async function getBeds(organizationId) {
+export async function getBeds(organizationId, sectorIds) {
   const beds = await prisma.bed.findMany({
-    where: {
-      organizationId,
-      isActive: true,
-      OR: [{ sectorId: null }, { sectorRef: { isActive: true } }]
-    },
-    include: getBedInclude(organizationId),
-    orderBy: [{ sector: "asc" }, { code: "asc" }]
+    where: activeBedWhere(organizationId, sectorIds),
+    include: getBedInclude(organizationId, sectorIds),
+    orderBy: [{ sectorName: "asc" }, { code: "asc" }]
   });
 
   return beds.map(mapBedRecord);
@@ -87,21 +88,19 @@ export async function getAdminBeds(organizationId) {
       organizationId
     },
     include: getBedInclude(organizationId),
-    orderBy: [{ sector: "asc" }, { code: "asc" }]
+    orderBy: [{ sectorName: "asc" }, { code: "asc" }]
   });
 
   return beds.map(mapBedRecord);
 }
 
-export async function getBedById(bedId, organizationId) {
+export async function getBedById(bedId, organizationId, sectorIds) {
   const bed = await prisma.bed.findFirst({
     where: {
       id: Number(bedId),
-      organizationId,
-      isActive: true,
-      OR: [{ sectorId: null }, { sectorRef: { isActive: true } }]
+      ...activeBedWhere(organizationId, sectorIds)
     },
-    include: getBedInclude(organizationId)
+    include: getBedInclude(organizationId, sectorIds)
   });
 
   if (!bed) {
@@ -133,7 +132,7 @@ export async function createBed(payload, organizationId) {
       organizationId,
       sectorId: sector.id,
       code,
-      sector: sector.name,
+      sectorName: sector.name,
       occupied: false,
       status: "Vago",
       isActive: typeof payload?.isActive === "boolean" ? payload.isActive : true
@@ -189,7 +188,7 @@ export async function updateBed(bedId, payload, organizationId) {
   if (payload?.sectorId !== undefined) {
     const sector = await getSectorForBed(payload.sectorId, organizationId);
     nextData.sectorId = sector.id;
-    nextData.sector = sector.name;
+    nextData.sectorName = sector.name;
   }
 
   if (payload?.isActive === false && bed.occupied) {

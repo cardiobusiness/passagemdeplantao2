@@ -24,7 +24,14 @@ export function requireAuth(req, res, next) {
     return res.status(401).json({ message: "Sessao invalida ou expirada." });
   }
 
-  req.user = user;
+  if (!user.isActive) {
+    return res.status(403).json({ message: "Usuario inativo. Procure um administrador." });
+  }
+
+  req.user = {
+    ...user,
+    sectorIds: Array.isArray(user.sectorIds) ? user.sectorIds : []
+  };
   req.authToken = token;
   next();
 }

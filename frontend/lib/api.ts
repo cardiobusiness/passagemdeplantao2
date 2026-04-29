@@ -3,6 +3,7 @@ import {
   BedFormPayload,
   CreatePatientLabPayload,
   CreatePatientPayload,
+  AuthenticatedLoginResponse,
   DashboardSummary,
   DischargePatientPayload,
   Handover,
@@ -85,8 +86,19 @@ export function login(identifier: string, password: string) {
   });
 }
 
+export function selectOrganization(temporaryToken: string, organizationId: number) {
+  return request<AuthenticatedLoginResponse>("/auth/select-organization", {
+    method: "POST",
+    body: JSON.stringify({ temporaryToken, organizationId })
+  });
+}
+
 export function logout(token: string) {
   return request<void>("/auth/logout", withAuthorization(token, { method: "POST" }));
+}
+
+export function getMe(token: string) {
+  return request<User>("/auth/me", withAuthorization(token));
 }
 
 export function getActiveProfessionals(token: string) {

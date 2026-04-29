@@ -14,6 +14,10 @@ prisma/migrations/*
 !prisma/migrations/20260425130000_add_organizations/migration.sql
 !prisma/migrations/20260425143000_add_sectors_and_bed_admin/
 !prisma/migrations/20260425143000_add_sectors_and_bed_admin/migration.sql
+!prisma/migrations/20260425173000_add_user_sector_access/
+!prisma/migrations/20260425173000_add_user_sector_access/migration.sql
+!prisma/migrations/20260426100000_add_multi_organization_users/
+!prisma/migrations/20260426100000_add_multi_organization_users/migration.sql
 
 # IDE
 .vscode/

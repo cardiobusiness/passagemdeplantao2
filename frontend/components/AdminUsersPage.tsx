@@ -4,12 +4,13 @@ import { FormEvent, useEffect, useState } from "react";
 import {
   createAdminUser,
   getAdminUsers,
+  getSectors,
   resetAdminUserPassword,
   updateAdminUser,
   updateAdminUserStatus
 } from "@/lib/api";
 import { getRoleLabel, getStoredToken } from "@/lib/auth";
-import { UpdateUserPayload, User, UserFormPayload } from "@/lib/types";
+import { Sector, UpdateUserPayload, User, UserFormPayload } from "@/lib/types";
 import { AdminNav } from "./AdminNav";
 import styles from "./admin-users-page.module.css";
 
@@ -20,7 +21,8 @@ const initialFormState: UserFormPayload = {
   password: "",
   jobTitle: "",
   role: "routine",
-  isActive: true
+  isActive: true,
+  sectorIds: []
 };
 
 const roleOptions = [
@@ -32,12 +34,17 @@ const roleOptions = [
 
 export function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
+  const [sectors, setSectors] = useState<Sector[]>([]);
   const [form, setForm] = useState<UserFormPayload>(initialFormState);
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
+
+  function getDefaultSectorIds(source = sectors) {
+    return source.filter((sector) => sector.isActive).map((sector) => sector.id);
+  }
 
   async function loadUsers() {
     const token = getStoredToken();
@@ -52,8 +59,16 @@ export function AdminUsersPage() {
     setError("");
 
     try {
-      const nextUsers = await getAdminUsers(token);
+      const [nextUsers, nextSectors] = await Promise.all([
+        getAdminUsers(token),
+        getSectors(token)
+      ]);
       setUsers(nextUsers);
+      setSectors(nextSectors);
+      setForm((current) => ({
+        ...current,
+        sectorIds: editingUserId ? current.sectorIds : current.sectorIds.length ? current.sectorIds : getDefaultSectorIds(nextSectors)
+      }));
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Nao foi possivel carregar os usuarios.");
     } finally {
@@ -65,10 +80,19 @@ export function AdminUsersPage() {
     loadUsers();
   }, []);
 
-  function handleChange(field: keyof UserFormPayload, value: string | boolean) {
+  function handleChange(field: keyof UserFormPayload, value: string | boolean | number[]) {
     setForm((current) => ({
       ...current,
       [field]: value
+    }));
+  }
+
+  function handleSectorToggle(sectorId: number, checked: boolean) {
+    setForm((current) => ({
+      ...current,
+      sectorIds: checked
+        ? [...new Set([...current.sectorIds, sectorId])]
+        : current.sectorIds.filter((currentSectorId) => currentSectorId !== sectorId)
     }));
   }
 
@@ -81,7 +105,8 @@ export function AdminUsersPage() {
       password: "",
       jobTitle: user.jobTitle,
       role: user.role,
-      isActive: user.isActive
+      isActive: user.isActive,
+      sectorIds: user.sectorIds ?? user.sectors?.map((sector) => sector.id) ?? []
     });
     setFeedback("");
     setError("");
@@ -89,7 +114,10 @@ export function AdminUsersPage() {
 
   function resetForm() {
     setEditingUserId(null);
-    setForm(initialFormState);
+    setForm({
+      ...initialFormState,
+      sectorIds: getDefaultSectorIds()
+    });
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -106,6 +134,10 @@ export function AdminUsersPage() {
     setError("");
 
     try {
+      if (form.sectorIds.length === 0) {
+        throw new Error("Selecione pelo menos um setor para o profissional.");
+      }
+
       if (editingUserId) {
         const payload: UpdateUserPayload = {
           name: form.name,
@@ -113,7 +145,8 @@ export function AdminUsersPage() {
           login: form.login,
           jobTitle: form.jobTitle,
           role: form.role,
-          isActive: form.isActive
+          isActive: form.isActive,
+          sectorIds: form.sectorIds
         };
 
         await updateAdminUser(token, editingUserId, payload);
@@ -220,12 +253,11 @@ export function AdminUsersPage() {
             </label>
 
             <label className={styles.field}>
-              <span>Senha {editingUserId ? "(mantida no backend ao editar)" : ""}</span>
+              <span>{editingUserId ? "Senha (mantida no backend ao editar)" : "Senha inicial (obrigatoria para novo usuario)"}</span>
               <input
                 type="password"
                 value={form.password}
                 onChange={(event) => handleChange("password", event.target.value)}
-                required={!editingUserId}
               />
             </label>
 
@@ -257,6 +289,25 @@ export function AdminUsersPage() {
               />
               <span>Usuario ativo</span>
             </label>
+
+            <fieldset className={styles.sectorAccess}>
+              <legend>Setores liberados</legend>
+              <div className={styles.sectorGrid}>
+                {sectors.map((sector) => (
+                  <label key={sector.id} className={styles.sectorOption}>
+                    <input
+                      type="checkbox"
+                      checked={form.sectorIds.includes(sector.id)}
+                      onChange={(event) => handleSectorToggle(sector.id, event.target.checked)}
+                    />
+                    <span>{sector.name}{sector.isActive ? "" : " (inativo)"}</span>
+                  </label>
+                ))}
+              </div>
+              {!loading && sectors.length === 0 ? (
+                <p className={styles.empty}>Cadastre um setor antes de liberar acessos.</p>
+              ) : null}
+            </fieldset>
 
             {feedback ? <p className={styles.success}>{feedback}</p> : null}
             {error ? <p className={styles.error}>{error}</p> : null}
@@ -302,6 +353,12 @@ export function AdminUsersPage() {
                 <div className={styles.userMeta}>
                   <span>E-mail: {user.email}</span>
                   <span>Login: {user.login}</span>
+                  <span>
+                    Setores:{" "}
+                    {user.sectors?.length
+                      ? user.sectors.map((sector) => sector.name).join(", ")
+                      : "Nenhum setor liberado para este usuário."}
+                  </span>
                 </div>
 
                 <div className={styles.cardActions}>

@@ -51,7 +51,7 @@ router.patch("/admin/:id", requireAdminManagementAccess, requireOrganizationWrit
 
 router.get("/", async (req, res) => {
   try {
-    const beds = await getBeds(req.user.organizationId);
+    const beds = await getBeds(req.user.organizationId, req.user.sectorIds);
     res.json(beds);
   } catch (error) {
     res.status(500).json({

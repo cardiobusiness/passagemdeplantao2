@@ -8,10 +8,11 @@ import { ProtectedShell } from "@/components/ProtectedShell";
 import {
   emptyDashboard,
   getServerBeds,
+  getServerCurrentUser,
   getServerMonthlyDashboard,
   getServerPatients
 } from "@/lib/server-api";
-import { Bed, DashboardSummary, Patient } from "@/lib/types";
+import { Bed, DashboardSummary, Patient, User } from "@/lib/types";
 import { formatVentilatorySupport } from "@/lib/ventilatorySupport";
 import styles from "@/components/dashboard-shell.module.css";
 
@@ -23,12 +24,15 @@ type Props = {
 
 async function loadDashboardData() {
   const results = await Promise.allSettled([
+    getServerCurrentUser(),
     getServerBeds(),
     getServerMonthlyDashboard(),
     getServerPatients()
   ]);
-  const [bedsResult, dashboardResult, patientsResult] = results;
+  const [userResult, bedsResult, dashboardResult, patientsResult] = results;
   const errors: string[] = [];
+
+  const currentUser: User | null = userResult.status === "fulfilled" ? userResult.value : null;
 
   const beds: Bed[] = bedsResult.status === "fulfilled" ? bedsResult.value : [];
   if (bedsResult.status === "rejected") {
@@ -48,12 +52,13 @@ async function loadDashboardData() {
     errors.push("Nao foi possivel carregar os pacientes.");
   }
 
-  return { beds, dashboard, patients, errors };
+  return { beds, dashboard, patients, currentUser, errors };
 }
 
 export default async function DashboardPage({ searchParams }: Props) {
-  const { beds, dashboard, patients, errors } = await loadDashboardData();
+  const { beds, dashboard, patients, currentUser, errors } = await loadDashboardData();
   const hasPatients = patients.length > 0;
+  const hasSectorAccess = Boolean(currentUser?.sectorIds?.length);
 
   const availableBeds = beds
     .filter((bed) => !bed.occupied)
@@ -134,7 +139,7 @@ export default async function DashboardPage({ searchParams }: Props) {
                 <span className="pill">Atualizacao em tempo real preparada</span>
               </div>
             </div>
-            <BedGrid beds={beds} />
+            <BedGrid beds={beds} hasSectorAccess={hasSectorAccess} />
           </section>
 
           <div className={styles.rightColumn}>

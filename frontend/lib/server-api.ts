@@ -1,11 +1,12 @@
 import { cookies } from "next/headers";
 import {
   getBeds,
+  getMe,
   getMonthlyDashboard,
   getPatient,
   getPatients
 } from "./api";
-import { Bed, DashboardSummary, Patient } from "./types";
+import { Bed, DashboardSummary, Patient, User } from "./types";
 import { TOKEN_COOKIE_KEY } from "./auth";
 
 export const emptyDashboard: DashboardSummary = {
@@ -34,6 +35,11 @@ function getServerToken() {
 export async function getServerBeds(): Promise<Bed[]> {
   const token = getServerToken();
   return token ? getBeds(token) : [];
+}
+
+export async function getServerCurrentUser(): Promise<User | null> {
+  const token = getServerToken();
+  return token ? getMe(token) : null;
 }
 
 export async function getServerPatients(): Promise<Patient[]> {

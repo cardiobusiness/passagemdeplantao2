@@ -1,15 +1,20 @@
 import { prisma } from "../middleware/prismaMiddleware.js";
 import { mapPatientRecord } from "../utils/patientMapper.js";
+import { activeBedWhere, activePatientWhere } from "./sectorAccessService.js";
 
-function getPatientInclude(organizationId) {
+function activeOrganizationBedWhere(organizationId) {
+  return {
+    organizationId,
+    occupied: true,
+    isActive: true,
+    OR: [{ sectorId: null }, { sector: { isActive: true } }]
+  };
+}
+
+function getPatientInclude(organizationId, sectorIds = null) {
   return {
     beds: {
-      where: {
-        organizationId,
-        occupied: true,
-        isActive: true,
-        OR: [{ sectorId: null }, { sectorRef: { isActive: true } }]
-      },
+      where: sectorIds ? { ...activeBedWhere(organizationId, sectorIds), occupied: true } : activeOrganizationBedWhere(organizationId),
       take: 1,
       orderBy: { id: "asc" }
     },
@@ -293,23 +298,23 @@ function mapLabRecord(lab) {
   };
 }
 
-export async function getPatients(organizationId) {
+export async function getPatients(organizationId, sectorIds) {
   const patients = await prisma.patient.findMany({
-    where: { organizationId },
-    include: getPatientInclude(organizationId),
+    where: activePatientWhere(organizationId, sectorIds),
+    include: getPatientInclude(organizationId, sectorIds),
     orderBy: { admissionDate: "desc" }
   });
 
   return patients.map(mapPatientRecord);
 }
 
-export async function getPatientById(patientId, organizationId) {
+export async function getPatientById(patientId, organizationId, sectorIds) {
   const patient = await prisma.patient.findFirst({
     where: {
       id: Number(patientId),
-      organizationId
+      ...activePatientWhere(organizationId, sectorIds)
     },
-    include: getPatientInclude(organizationId)
+    include: getPatientInclude(organizationId, sectorIds)
   });
 
   if (!patient) {
@@ -321,7 +326,7 @@ export async function getPatientById(patientId, organizationId) {
   return mapPatientRecord(patient);
 }
 
-export async function createPatient(payload, organizationId) {
+export async function createPatient(payload, organizationId, sectorIds) {
   const name = normalizeString(payload?.name);
   const recordNumber = normalizeString(payload?.recordNumber);
   const age = Number(payload?.age ?? 0);
@@ -376,9 +381,7 @@ export async function createPatient(payload, organizationId) {
   const bed = await prisma.bed.findFirst({
     where: {
       id: bedId,
-      organizationId,
-      isActive: true,
-      OR: [{ sectorId: null }, { sectorRef: { isActive: true } }]
+      ...activeBedWhere(organizationId, sectorIds)
     }
   });
 
@@ -453,7 +456,7 @@ export async function createPatient(payload, organizationId) {
 
   const patient = await prisma.patient.findUnique({
     where: { id: patientId },
-    include: getPatientInclude(organizationId)
+    include: getPatientInclude(organizationId, sectorIds)
   });
 
   if (!patient) {
@@ -463,22 +466,17 @@ export async function createPatient(payload, organizationId) {
   return mapPatientRecord(patient);
 }
 
-export async function updatePatientClinicalData(patientId, payload, organizationId) {
+export async function updatePatientClinicalData(patientId, payload, organizationId, sectorIds) {
   const numericPatientId = Number(patientId);
   const patient = await prisma.patient.findFirst({
     where: {
       id: numericPatientId,
-      organizationId
+      ...activePatientWhere(organizationId, sectorIds)
     },
     include: {
       admissionMetrics: true,
       beds: {
-        where: {
-          organizationId,
-          occupied: true,
-          isActive: true,
-          OR: [{ sectorId: null }, { sectorRef: { isActive: true } }]
-        },
+        where: { ...activeBedWhere(organizationId, sectorIds), occupied: true },
         take: 1
       }
     }
@@ -602,7 +600,7 @@ export async function updatePatientClinicalData(patientId, payload, organization
 
   const updatedPatient = await prisma.patient.findUnique({
     where: { id: numericPatientId },
-    include: getPatientInclude(organizationId)
+    include: getPatientInclude(organizationId, sectorIds)
   });
 
   if (!updatedPatient) {
@@ -612,14 +610,12 @@ export async function updatePatientClinicalData(patientId, payload, organization
   return mapPatientRecord(updatedPatient);
 }
 
-export async function dischargePatient(patientId, payload, organizationId) {
+export async function dischargePatient(patientId, payload, organizationId, sectorIds) {
   const bed = await prisma.bed.findFirst({
     where: {
       patientId: Number(patientId),
-      organizationId,
       occupied: true,
-      isActive: true,
-      OR: [{ sectorId: null }, { sectorRef: { isActive: true } }]
+      ...activeBedWhere(organizationId, sectorIds)
     }
   });
 
@@ -704,7 +700,7 @@ export async function dischargePatient(patientId, payload, organizationId) {
 
   const updatedPatient = await prisma.patient.findUnique({
     where: { id: Number(patientId) },
-    include: getPatientInclude(organizationId)
+    include: getPatientInclude(organizationId, sectorIds)
   });
 
   if (!updatedPatient) {
@@ -714,11 +710,11 @@ export async function dischargePatient(patientId, payload, organizationId) {
   return mapPatientRecord(updatedPatient);
 }
 
-export async function getPatientLabs(patientId, organizationId) {
+export async function getPatientLabs(patientId, organizationId, sectorIds) {
   const patient = await prisma.patient.findFirst({
     where: {
       id: Number(patientId),
-      organizationId
+      ...activePatientWhere(organizationId, sectorIds)
     }
   });
 
@@ -736,11 +732,11 @@ export async function getPatientLabs(patientId, organizationId) {
   return labs.map(mapLabRecord);
 }
 
-export async function createPatientLab(patientId, payload, organizationId) {
+export async function createPatientLab(patientId, payload, organizationId, sectorIds) {
   const patient = await prisma.patient.findFirst({
     where: {
       id: Number(patientId),
-      organizationId
+      ...activePatientWhere(organizationId, sectorIds)
     }
   });
 
@@ -774,11 +770,11 @@ export async function createPatientLab(patientId, payload, organizationId) {
   return mapLabRecord(lab);
 }
 
-export async function updatePatientLab(patientId, labId, payload, organizationId) {
+export async function updatePatientLab(patientId, labId, payload, organizationId, sectorIds) {
   const patient = await prisma.patient.findFirst({
     where: {
       id: Number(patientId),
-      organizationId
+      ...activePatientWhere(organizationId, sectorIds)
     }
   });
 
@@ -825,11 +821,11 @@ export async function updatePatientLab(patientId, labId, payload, organizationId
   return mapLabRecord(updatedLab);
 }
 
-export async function deletePatientLab(patientId, labId, organizationId) {
+export async function deletePatientLab(patientId, labId, organizationId, sectorIds) {
   const patient = await prisma.patient.findFirst({
     where: {
       id: Number(patientId),
-      organizationId
+      ...activePatientWhere(organizationId, sectorIds)
     }
   });
 

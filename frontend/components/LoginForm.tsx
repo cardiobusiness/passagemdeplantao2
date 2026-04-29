@@ -3,9 +3,14 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./login-form.module.css";
-import { saveSession } from "@/lib/auth";
+import { savePendingOrganizationSelection, saveSession } from "@/lib/auth";
 import { login } from "@/lib/api";
 import { getDefaultRouteForRole } from "@/lib/permissions";
+import { LoginResponse, OrganizationSelectionResponse } from "@/lib/types";
+
+function requiresOrganizationSelection(response: LoginResponse): response is OrganizationSelectionResponse {
+  return "requiresOrganizationSelection" in response && response.requiresOrganizationSelection;
+}
 
 export function LoginForm() {
   const router = useRouter();
@@ -26,6 +31,13 @@ export function LoginForm() {
 
     try {
       const response = await login(identifier, password);
+
+      if (requiresOrganizationSelection(response)) {
+        savePendingOrganizationSelection(response);
+        router.replace("/select-organization");
+        return;
+      }
+
       saveSession(response.user, response.token);
       router.replace(getDefaultRouteForRole(response.user.role));
       router.refresh();
